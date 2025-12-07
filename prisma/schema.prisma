@@ -41,48 +41,58 @@ model Hair {
   updatedAt    DateTime   @updatedAt
 }
 
+enum ScheduleModel {
+  WEEK
+  CUSTOM
+  UNAVAILABLE
+}
+
 model Schedule {
   id                    Int                    @id @default(autoincrement())
   barberShopId          Int
   barberShop            BarberShop             @relation(fields: [barberShopId], references: [id])
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
+  model                 ScheduleModel
   week                  ScheduleWeek[]
   custom                ScheduleCustom[]
   scheduleNotAvailables ScheduleNotAvailable[]
-  schedulePeriods       SchedulePeriod[]
 }
 
 model ScheduleWeek {
-  id         Int      @id @default(autoincrement())
+  id         Int              @id @default(autoincrement())
+  dayOfWeek  Int
+  periods    SchedulePeriod[]
+  createdAt  DateTime         @default(now())
   scheduleId Int
-  schedule   Schedule @relation(fields: [scheduleId], references: [id])
-  date       DateTime
-  createdAt  DateTime @default(now())
+  schedule   Schedule         @relation(fields: [scheduleId], references: [id])
 }
 
 model ScheduleCustom {
-  id         Int      @id @default(autoincrement())
-  scheduleId Int
-  schedule   Schedule @relation(fields: [scheduleId], references: [id])
+  id         Int              @id @default(autoincrement())
   date       DateTime
-  createdAt  DateTime @default(now())
+  periods    SchedulePeriod[]
+  createdAt  DateTime         @default(now())
+  scheduleId Int
+  schedule   Schedule         @relation(fields: [scheduleId], references: [id])
 }
 
 model SchedulePeriod {
-  id         Int      @id @default(autoincrement())
-  scheduleId Int
-  schedule   Schedule @relation(fields: [scheduleId], references: [id])
-  startTime  DateTime
-  endTime    DateTime
-  duration   Int
-  createdAt  DateTime @default(now())
+  id               Int             @id @default(autoincrement())
+  startTime        DateTime
+  endTime          DateTime
+  duration         Int
+  scheduleWeekId   Int?
+  scheduleWeek     ScheduleWeek?   @relation(fields: [scheduleWeekId], references: [id])
+  scheduleCustomId Int?
+  scheduleCustom   ScheduleCustom? @relation(fields: [scheduleCustomId], references: [id])
+  createdAt        DateTime        @default(now())
 }
 
 model ScheduleNotAvailable {
   id         Int      @id @default(autoincrement())
-  scheduleId Int
-  schedule   Schedule @relation(fields: [scheduleId], references: [id])
   date       DateTime
   createdAt  DateTime @default(now())
+  scheduleId Int
+  schedule   Schedule @relation(fields: [scheduleId], references: [id])
 }

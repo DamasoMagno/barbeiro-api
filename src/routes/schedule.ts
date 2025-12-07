@@ -2,10 +2,15 @@ import { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z from "zod";
 import { prisma } from "../lib/prisma";
 import { paginationSchema } from "../validations/paginationSchema";
+import { ScheduleModel } from "../generated/prisma/enums";
 
 const scheduleSchema = z
   .object({
-    model: z.enum(["week", "custom", "unavailable"]),
+    model: z.enum([
+      ScheduleModel.WEEK,
+      ScheduleModel.CUSTOM,
+      ScheduleModel.UNAVAILABLE,
+    ]),
     periods: z.array(
       z.object({
         startTime: z.string(),
@@ -17,8 +22,8 @@ const scheduleSchema = z
   })
   .superRefine((data, ctx) => {
     if (
-      data.model === "week" ||
-      (data.model === "custom" && data.periods.length === 0)
+      data.model === ScheduleModel.WEEK ||
+      (data.model === ScheduleModel.CUSTOM && data.periods.length === 0)
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -46,21 +51,89 @@ export const scheduleRoutes: FastifyPluginAsyncZod = async (app) => {
     "/",
     {
       schema: {
-        querystring: paginationSchema,
-        response: {
-          200: z.array(scheduleSchema),
-        },
+        querystring: paginationSchema.extend({
+          model: z
+            .enum([
+              ScheduleModel.WEEK,
+              ScheduleModel.CUSTOM,
+              ScheduleModel.UNAVAILABLE,
+            ])
+            .optional(),
+          barberShopId: z.number().optional(),
+        }),
       },
     },
     async (request, reply) => {
-      const { page, limit } = request.query;
+      const { page, limit, model, barberShopId } = request.query;
 
       const schedules = await prisma.schedule.findMany({
+        where: {
+          ...(model && { model }),
+          ...(barberShopId && { barberShopId }),
+        },
+        include: {
+          barberShop: true,
+          ...((!model || model === ScheduleModel.WEEK) && {
+            week: {
+              include: {
+                periods: true,
+              },
+            },
+          }),
+          ...((!model || model === ScheduleModel.CUSTOM) && {
+            custom: {
+              include: {
+                periods: true,
+              },
+            },
+          }),
+          ...((!model || model === ScheduleModel.UNAVAILABLE) && {
+            scheduleNotAvailables: true,
+          }),
+        },
         skip: (page - 1) * limit,
         take: limit,
       });
 
-      return reply.status(200).send(schedules);
+      const formatted = schedules.map((schedule) => {
+        const base = {
+          id: schedule.id,
+          barberShopId: schedule.barberShopId,
+          model: schedule.model,
+          createdAt: schedule.createdAt,
+          updatedAt: schedule.updatedAt,
+        };
+
+        switch (schedule.model) {
+          case ScheduleModel.WEEK:
+            return {
+              ...base,
+              weekSchedule: schedule.week.map((w) => ({
+                dayOfWeek: w.dayOfWeek,
+                periods: w.periods,
+              })),
+            };
+
+          case ScheduleModel.CUSTOM:
+            return {
+              ...base,
+              customSchedule: schedule.custom.map((c) => ({
+                date: c.date,
+                periods: c.periods,
+              })),
+            };
+
+          case ScheduleModel.UNAVAILABLE:
+            return {
+              ...base,
+              unavailableDates: schedule.scheduleNotAvailables.map(
+                (n) => n.date
+              ),
+            };
+        }
+      });
+
+      return reply.status(200).send(formatted);
     }
   );
 
@@ -75,13 +148,10 @@ export const scheduleRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
-      const { name, price, photoUrl, barberShopId } = request.body;
+      const { barberShopId } = request.body;
 
-      await prisma.hair.create({
+      await prisma.schedule.create({
         data: {
-          name,
-          price,
-          photoUrl: photoUrl || "",
           barberShopId,
         },
       });
@@ -104,16 +174,13 @@ export const scheduleRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (request, reply) => {
       const { id } = request.params;
-      const { name, price, photoUrl, barberShopId } = request.body;
+      const { barberShopId } = request.body;
 
-      await prisma.hair.update({
+      await prisma.schedule.update({
         where: {
           id: Number(id),
         },
         data: {
-          name,
-          price,
-          photoUrl,
           barberShopId,
         },
       });
