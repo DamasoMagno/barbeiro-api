@@ -8,16 +8,26 @@ datasource db {
 }
 
 model BarberShop {
-  id        Int        @id @default(autoincrement())
-  name      String
-  email     String     @unique
-  slug      String     @unique
-  address   String
-  phone     String
-  barbers   Barber[]
-  createdAt DateTime   @default(now())
-  hairs     Hair[]
-  schedules Schedule[]
+  id          Int           @id @default(autoincrement())
+  name        String
+  email       String        @unique
+  slug        String        @unique
+  address     String
+  phone       String
+  barbers     Barber[]
+  createdAt   DateTime      @default(now())
+  hairs       Hair[]
+  schedules   Schedule[]
+  avaliations Avaliations[]
+}
+
+model Avaliations {
+  id           Int        @id @default(autoincrement())
+  barberShopId Int
+  barberShop   BarberShop @relation(fields: [barberShopId], references: [id])
+  rating       Int
+  comment      String?
+  createdAt    DateTime   @default(now())
 }
 
 model Barber {

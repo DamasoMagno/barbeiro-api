@@ -14,6 +14,7 @@ import { env } from "./env";
 import { barberShopRoutes } from "./routes/barbershop";
 import { hairRoutes } from "./routes/hair";
 import { barberRoutes } from "./routes/barber";
+import { avaliationsRoutes } from "./routes/avaliations";
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>();
 
@@ -56,6 +57,10 @@ app.register(barberRoutes, {
 
 app.register(barberRoutes, {
   prefix: "/barber",
+});
+
+app.register(avaliationsRoutes, {
+  prefix: "/avaliations",
 });
 
 app.get("/", async (request, reply) => {

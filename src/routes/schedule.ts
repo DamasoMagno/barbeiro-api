@@ -73,23 +73,23 @@ export const scheduleRoutes: FastifyPluginAsyncZod = async (app) => {
         },
         include: {
           barberShop: true,
-          ...((!model || model === ScheduleModel.WEEK) && {
-            week: {
-              include: {
-                periods: true,
-              },
+          custom: {
+            select: {
+              date: true,
+              periods: true,
             },
-          }),
-          ...((!model || model === ScheduleModel.CUSTOM) && {
-            custom: {
-              include: {
-                periods: true,
-              },
+          },
+          week: {
+            select: {
+              dayOfWeek: true,
+              periods: true,
             },
-          }),
-          ...((!model || model === ScheduleModel.UNAVAILABLE) && {
-            scheduleNotAvailables: true,
-          }),
+          },
+          scheduleNotAvailables: {
+            select: {
+              date: true,
+            },
+          },
         },
         skip: (page - 1) * limit,
         take: limit,
@@ -148,13 +148,24 @@ export const scheduleRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
-      const { barberShopId } = request.body;
+      const { barberShopId, model, periods } = request.body;
 
-      await prisma.schedule.create({
+      const schedule = await prisma.schedule.create({
         data: {
           barberShopId,
+          model,
         },
       });
+
+      await prisma.schedulePeriod.createMany({
+        data: periods.map((period) => ({
+          scheduleId: schedule.id,
+          startTime: new Date(`1970-01-01T${period.startTime}:00Z`),
+          endTime: new Date(`1970-01-01T${period.endTime}:00Z`),
+          duration: period.duration,
+        })),
+      });
+
       return reply.code(200).send();
     }
   );
@@ -174,16 +185,7 @@ export const scheduleRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (request, reply) => {
       const { id } = request.params;
-      const { barberShopId } = request.body;
-
-      await prisma.schedule.update({
-        where: {
-          id: Number(id),
-        },
-        data: {
-          barberShopId,
-        },
-      });
+      const { periods, model } = request.body;
 
       return reply.code(200).send();
     }
