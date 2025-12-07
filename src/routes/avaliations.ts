@@ -56,11 +56,24 @@ export const avaliationsRoutes: FastifyPluginAsyncZod = async (app) => {
           200: z.object({
             message: z.string(),
           }),
+          404: z.object({
+            message: z.string(),
+          }),
         },
       },
     },
     async (request, reply) => {
       const { rating, comment, barberShopId } = request.body;
+      const barberShopExists = await prisma.barberShop.findUnique({
+        where: {
+          id: barberShopId,
+        },
+      });
+
+      if (!barberShopExists) {
+        return reply.status(404).send({ message: "Barber shop not found." });
+      }
+
       await prisma.avaliations.create({
         data: {
           rating,
@@ -82,12 +95,25 @@ export const avaliationsRoutes: FastifyPluginAsyncZod = async (app) => {
         body: updateAvaliationsSchema,
         response: {
           200: z.void(),
+          404: z.object({
+            message: z.string(),
+          }),
         },
       },
     },
     async (request, reply) => {
       const { id } = request.params;
-      const { rating, comment, barberShopId } = request.body;
+      const { rating, comment } = request.body;
+
+      const avaliationsExists = await prisma.avaliations.findUnique({
+        where: {
+          id,
+        },
+      });
+
+      if (!avaliationsExists) {
+        return reply.status(404).send({ message: "Barber shop not found." });
+      }
 
       await prisma.avaliations.update({
         where: {
@@ -96,7 +122,6 @@ export const avaliationsRoutes: FastifyPluginAsyncZod = async (app) => {
         data: {
           rating,
           comment,
-          barberShopId,
         },
       });
 
@@ -113,11 +138,24 @@ export const avaliationsRoutes: FastifyPluginAsyncZod = async (app) => {
         }),
         response: {
           200: z.void(),
+          404: z.object({
+            message: z.string(),
+          }),
         },
       },
     },
     async (request, reply) => {
       const { id } = request.params;
+
+      const avaliationsExists = await prisma.avaliations.findUnique({
+        where: {
+          id,
+        },
+      });
+
+      if (!avaliationsExists) {
+        return reply.status(404).send({ message: "Avaliations not found." });
+      }
 
       await prisma.avaliations.delete({
         where: {

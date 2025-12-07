@@ -55,10 +55,6 @@ app.register(barberRoutes, {
   prefix: "/barber",
 });
 
-app.register(barberRoutes, {
-  prefix: "/barber",
-});
-
 app.register(avaliationsRoutes, {
   prefix: "/avaliations",
 });
